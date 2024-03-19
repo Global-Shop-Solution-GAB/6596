@@ -1,0 +1,121 @@
+﻿Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+f.Intrinsic.Control.Try
+	'Check it only runs on pre proc Report
+	f.Intrinsic.Control.If(v.Caller.Hook, <>, 16090)
+		f.Intrinsic.Control.End
+	f.Intrinsic.Control.EndIf
+	'Check if report id is 55
+	f.Intrinsic.Control.If(v.Passed.BIP_REPORTID, =, "000055")
+		f.Intrinsic.Control.CallSub(changeFreightSeq)
+	f.Intrinsic.Control.EndIf
+	f.Intrinsic.Control.If(v.Passed.BIP_REPORTID, =, "000057")
+		f.Intrinsic.Control.CallSub(changeFreightSeqTwo)
+	f.Intrinsic.Control.EndIf
+f.Intrinsic.Control.Catch
+	f.Intrinsic.Control.CallSub(ErrorMsg, CurrentSub, v.Ambient.CurrentSubroutine)
+f.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.changeFreightSeq.Start
+v.Local.sSQL.Declare
+v.Local.sSeqOne.Declare
+v.Local.sSeqTwo.Declare
+v.Local.sSeq.Declare
+v.Local.iCnt.Declare
+v.Local.sFilter.Declare
+f.Intrinsic.Control.Try
+	f.ODBC.Connection!con.OpenCompanyConnection
+		'Pull Lines FL and TL
+		f.Intrinsic.String.Build("Select * from PRT_LASER_INVOICE where TERMINAL_NO = '{0}' and RPTID = '000055' order by KEY_SEQ asc", v.Caller.Terminal, v.Local.sSQL)
+		f.Data.Datatable.CreateFromSQL("prtDT", "con", v.Local.sSQL)
+		f.Data.DataView.Create("prtDT", "prtDV", 22, "", "KEY_SEQ asc")
+		'Get Distinct Invoices
+		f.Data.DataView.ToDataTableDistinct("prtDT", "prtDV", "invoiceDT", "INVOICE_NO*!*ORDER_NO")
+		'Loop Through Lines.
+		f.Intrinsic.Control.For(v.Local.iCnt, 0, v.DataTable.invoiceDT.RowCount--, 1)
+			'Set Filter
+			f.Intrinsic.String.Build("INVOICE_NO = '{0}' and ORDER_NO = '{1}' and LINE_TYPE in ('LT', 'LF')", v.DataTable.invoiceDT(v.Local.iCnt).INVOICE_NO!FieldValTrim, v.DataTable.invoiceDT(v.Local.iCnt).ORDER_NO!FieldValTrim, v.Local.sFilter)
+			f.Data.DataView.SetFilter("prtDT", "prtDV", v.Local.sFilter)
+			'Check number of lines
+			f.Intrinsic.Control.If(v.DataView.prtDT!prtDV.RowCount, =, 2)
+				v.Local.sSeqOne.Set(v.DataView.prtDT!prtDV(0).KEY_SEQ!FieldValTrim)
+				v.Local.sSeqTwo.Set(v.DataView.prtDT!prtDV(1).KEY_SEQ!FieldValTrim)
+				
+				f.Data.DataView.SetValue("prtDT", "prtDV", 0, "KEY_SEQ", v.Local.sSeqTwo)
+				f.Data.DataView.SetValue("prtDT", "prtDV", 1, "KEY_SEQ", v.Local.sSeqOne)
+			f.Intrinsic.Control.EndIf
+		f.Intrinsic.Control.Next(v.Local.iCnt)
+		'Delete PRT
+		f.Intrinsic.String.Build("Delete From PRT_LASER_INVOICE Where TERMINAL_NO = '{0}' and RPTID = '000055'", v.Caller.Terminal, v.Local.sSQL)
+		f.ODBC.Connection!con.Execute(v.Local.sSQL)
+		'Save Back to DB
+		f.Data.Datatable.AcceptChanges("prtDT")
+		f.Data.Datatable.SaveToDB("prtDT", "con", "PRT_LASER_INVOICE", "TERMINAL_NO*!*RPTID*!*KEY_SEQ", 156)
+	f.ODBC.Connection!con.Close	
+f.Intrinsic.Control.Catch
+	f.Intrinsic.Control.CallSub(ErrorMsg, CurrentSub, v.Ambient.CurrentSubroutine)
+f.Intrinsic.Control.EndTry
+Program.Sub.changeFreightSeq.End
+
+Program.Sub.changeFreightSeqTwo.Start
+v.Local.sSQL.Declare
+v.Local.sSeqOne.Declare
+v.Local.sSeqTwo.Declare
+v.Local.sSeq.Declare
+v.Local.iCnt.Declare
+v.Local.sFilter.Declare
+f.Intrinsic.Control.Try
+	f.ODBC.Connection!con.OpenCompanyConnection
+		'Pull Lines FL and TL
+		f.Intrinsic.String.Build("Select * from PRT_LASER_INVOICE where TERMINAL_NO = '{0}' and RPTID = '000057' order by KEY_SEQ asc", v.Caller.Terminal, v.Local.sSQL)
+		f.Data.Datatable.CreateFromSQL("prtDT", "con", v.Local.sSQL)
+		f.Data.DataView.Create("prtDT", "prtDV", 22, "", "KEY_SEQ asc")
+		'Get Distinct Invoices
+		f.Data.DataView.ToDataTableDistinct("prtDT", "prtDV", "invoiceDT", "INVOICE_NO*!*ORDER_NO")
+		'Loop Through Lines.
+		f.Intrinsic.Control.For(v.Local.iCnt, 0, v.DataTable.invoiceDT.RowCount--, 1)
+			'Set Filter
+			f.Intrinsic.String.Build("INVOICE_NO = '{0}' and ORDER_NO = '{1}' and LINE_TYPE in ('LT', 'LF')", v.DataTable.invoiceDT(v.Local.iCnt).INVOICE_NO!FieldValTrim, v.DataTable.invoiceDT(v.Local.iCnt).ORDER_NO!FieldValTrim, v.Local.sFilter)
+			f.Data.DataView.SetFilter("prtDT", "prtDV", v.Local.sFilter)
+			'Check number of lines
+			f.Intrinsic.Control.If(v.DataView.prtDT!prtDV.RowCount, =, 2)
+				v.Local.sSeqOne.Set(v.DataView.prtDT!prtDV(0).KEY_SEQ!FieldValTrim)
+				v.Local.sSeqTwo.Set(v.DataView.prtDT!prtDV(1).KEY_SEQ!FieldValTrim)
+				
+				f.Data.DataView.SetValue("prtDT", "prtDV", 0, "KEY_SEQ", v.Local.sSeqTwo)
+				f.Data.DataView.SetValue("prtDT", "prtDV", 1, "KEY_SEQ", v.Local.sSeqOne)
+			f.Intrinsic.Control.EndIf
+		f.Intrinsic.Control.Next(v.Local.iCnt)
+		'Delete PRT
+		f.Intrinsic.String.Build("Delete From PRT_LASER_INVOICE Where TERMINAL_NO = '{0}' and RPTID = '000057'", v.Caller.Terminal, v.Local.sSQL)
+		f.ODBC.Connection!con.Execute(v.Local.sSQL)
+		'Save Back to DB
+		f.Data.Datatable.AcceptChanges("prtDT")
+		f.Data.Datatable.SaveToDB("prtDT", "con", "PRT_LASER_INVOICE", "TERMINAL_NO*!*RPTID*!*KEY_SEQ", 156)
+	f.ODBC.Connection!con.Close	
+f.Intrinsic.Control.Catch
+	f.Intrinsic.Control.CallSub(ErrorMsg, CurrentSub, v.Ambient.CurrentSubroutine)
+f.Intrinsic.Control.EndTry
+Program.Sub.changeFreightSeqTwo.End
+
+Program.Sub.ErrorMsg.Start
+v.Local.sError.Declare
+
+'Closes ODBC connection, default to connection : "con"
+'f.Intrinsic.Control.If(v.ODBC!con.State, =, 1)
+'	f.ODBC.Connection!con.Close
+'f.Intrinsic.Control.EndIf
+
+'Generic Error message.
+f.Intrinsic.String.Build("Project GCG_6596_Freight_Line.g2u {0}{0}Subroutine: {1}{0}Error: {2} with Description: {3}", v.Ambient.NewLine, v.Args.CurrentSub, v.Ambient.ErrorNumber, v.Ambient.ErrorDescription, v.Local.sError)
+f.Intrinsic.UI.Msgbox(v.Local.sError)
+Program.Sub.ErrorMsg.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$aanazco$}$20220210161737923$}$7aQAV3Tor/tR9bkuakHbuzQlHVuXCGOzRi0nYnd7jNbKEQlCK8Eafdl8mu3152V4BRwWC42w8Wk=
+Program.Sub.Comments.End
